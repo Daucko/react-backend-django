@@ -1,14 +1,15 @@
 from django.http import Http404, JsonResponse
 from customers.models import Customer
-from customers.serializers import CustomerSerializer
+from customers.serializers import CustomerSerializer, UserSerializer
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
+from rest_framework_simplejwt.tokens import RefreshToken
 
 
 @api_view(['GET', 'POST'])
-@permission_classes([IsAuthenticated])
+# @permission_classes([IsAuthenticated])
 def customers(request):
     if request.method == 'GET':
         data = Customer.objects.all()
@@ -23,7 +24,7 @@ def customers(request):
         
 
 @api_view(['GET', 'POST', 'DELETE'])
-@permission_classes([IsAuthenticated])
+# @permission_classes([IsAuthenticated])
 def customer(request, id):
     try:
         data = Customer.objects.get(pk=id)
@@ -42,4 +43,16 @@ def customer(request, id):
             serializer.save()
             return Response({'customer': serializer.data})
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    
+
+@api_view(['POST'])
+def register(request):
+        serializer = UserSerializer(data=request.data)
+        if serializer.is_valid():
+            user = serializer.save()
+            refresh = RefreshToken.for_user(user)
+            tokens = {
+                'refresh': str(refresh),
+                'access': str(refresh.access_token)
+            }
+            return Response(tokens, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
